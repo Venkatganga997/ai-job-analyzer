@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Job Application Analyzer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #6366f1;
+      --accent2: #818cf8;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* HEADER */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-text h1 { font-size: 18px; font-weight: 700; }
+    .logo-text p  { font-size: 12px; color: var(--muted); }
+
+    .api-key-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .api-key-wrap label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+
+    .api-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-size: 13px;
+      width: 260px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .api-input:focus { border-color: var(--accent); }
+
+    .api-save-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .api-save-btn:hover { opacity: 0.85; }
+
+    .get-key-link {
+      font-size: 12px;
+      color: var(--accent2);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .get-key-link:hover { text-decoration: underline; }
+
+    /* MAIN */
+    main {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* INPUT GRID */
+    .input-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 860px) {
+      .input-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 13px 18px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .char-count { font-size: 12px; color: var(--muted); }
+
+    textarea {
+      width: 100%;
+      min-height: 280px;
+      background: transparent;
+      border: none;
+      padding: 16px 18px;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.65;
+      resize: vertical;
+      outline: none;
+      font-family: inherit;
+    }
+    textarea::placeholder { color: var(--muted); }
+
+    /* RESUME UPLOAD */
+    .upload-area {
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(99,102,241,0.05);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .drop-icon   { font-size: 34px; margin-bottom: 8px; }
+    .drop-title  { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .drop-sub    { font-size: 13px; color: var(--muted); }
+
+    .file-badge {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+    .file-badge.visible { display: flex; }
+    .remove-file {
+      margin-left: auto;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 16px;
+      color: var(--red);
+      line-height: 1;
+      padding: 0;
+    }
+
+    .resume-preview {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--muted);
+      white-space: pre-wrap;
+      display: none;
+    }
+    .resume-preview.visible { display: block; }
+
+    /* ANALYZE */
+    .analyze-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .analyze-btn {
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 44px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: opacity 0.2s, transform 0.15s;
+      box-shadow: 0 4px 24px rgba(99,102,241,0.4);
+    }
+    .analyze-btn:hover   { opacity: 0.9; transform: translateY(-1px); }
+    .analyze-btn:active  { transform: translateY(0); }
+    .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .clear-btn {
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 24px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .clear-btn:hover { color: var(--text); border-color: var(--muted); }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* RESULTS */
+    #results { display: none; flex-direction: column; gap: 20px; }
+    #results.visible { display: flex; }
+
+    .results-title { font-size: 18px; font-weight: 700; }
+
+    /* SCORE CARDS */
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 16px;
+    }
+
+    .score-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+
+    .score-value {
+      font-size: 44px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .score-label { font-size: 13px; color: var(--muted); }
+
+    .score-green  { color: var(--green); }
+    .score-yellow { color: var(--yellow); }
+    .score-red    { color: var(--red); }
+
+    .progress-bar-wrap {
+      background: var(--surface2);
+      border-radius: 99px;
+      height: 7px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .progress-bar {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1s ease;
+    }
+
+    /* KEYWORDS */
+    .section-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .section-header {
+      padding: 13px 18px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+
+    .keyword-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 16px;
+    }
+
+    .keyword-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: 99px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .chip-missing  { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.35);  color: #fca5a5; }
+    .chip-present  { background: rgba(34,197,94,0.12);  border: 1px solid rgba(34,197,94,0.35);  color: #86efac; }
+    .chip-partial  { background: rgba(234,179,8,0.12);  border: 1px solid rgba(234,179,8,0.35);  color: #fde047; }
+
+    /* REWRITES */
+    .rewrite-item {
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rewrite-item:last-child { border-bottom: none; }
+
+    .rewrite-reason {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      font-style: italic;
+    }
+
+    .rewrite-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .label-original { background: rgba(239,68,68,0.15); color: #fca5a5; }
+    .label-improved { background: rgba(34,197,94,0.15); color: #86efac; }
+
+    .rewrite-text {
+      font-size: 14px;
+      line-height: 1.65;
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .text-original { background: rgba(239,68,68,0.06); border-left: 3px solid var(--red); }
+    .text-improved { background: rgba(34,197,94,0.06); border-left: 3px solid var(--green); }
+
+    .copy-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .copy-btn:hover  { color: var(--text); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+    /* TIPS */
+    .tips-list {
+      list-style: none;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tip-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .tip-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent2);
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+
+    /* ALERT */
+    .alert {
+      padding: 13px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .alert-error { background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.3);  color: #fca5a5; }
+    .alert-info  { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); color: var(--accent2); }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    <div class="logo-text">
+      <h1>AI Job Analyzer</h1>
+      <p>Resume &amp; Job Description Match Analyzer</p>
+    </div>
+  </div>
+  <div class="api-key-wrap">
+    <label>Gemini API Key</label>
+    <input class="api-input" type="password" id="apiKeyInput" placeholder="Paste your free Gemini API key..." />
+    <button class="api-save-btn" onclick="saveApiKey()">Save</button>
+    <a class="get-key-link" href="https://aistudio.google.com/app/apikey" target="_blank">Get free key ↗</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- NO-KEY ALERT -->
+  <div class="alert alert-info" id="noKeyAlert">
+    <span>ℹ️</span>
+    <span>
+      Enter your <strong>free Gemini API key</strong> above to get started.
+      Visit <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent2)">Google AI Studio</a> — sign in with Google, click <em>Create API Key</em>, it's completely free.
+    </span>
+  </div>
+
+  <!-- INPUT PANELS -->
+  <div class="input-grid">
+
+    <!-- JD -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>📋</span> Job Description</div>
+        <span class="char-count" id="jdCount">0 chars</span>
+      </div>
+      <textarea id="jdText"
+        placeholder="Paste the full job description here...
+
+Example:
+We are looking for a Senior Software Engineer with 5+ years of experience in Python, AWS, and microservices architecture. Strong knowledge of REST APIs, Docker, Kubernetes, and CI/CD pipelines required..."></textarea>
+    </div>
+
+    <!-- RESUME -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>📄</span> Your Resume</div>
+        <span class="char-count" id="resumeCount">0 chars</span>
+      </div>
+      <div class="upload-area">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="resumeFile" accept=".pdf,.txt" />
+          <div class="drop-icon">☁️</div>
+          <div class="drop-title">Drop your resume here</div>
+          <div class="drop-sub">PDF or TXT · or click to browse</div>
+        </div>
+        <div class="file-badge" id="fileBadge">
+          <span>📎</span>
+          <span id="fileName">resume.pdf</span>
+          <button class="remove-file" onclick="removeFile()" title="Remove">✕</button>
+        </div>
+        <textarea id="resumeText"
+          placeholder="Or paste your resume text directly here..."
+          style="min-height:170px;"></textarea>
+        <div class="resume-preview" id="resumePreview"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BUTTONS -->
+  <div class="analyze-wrap">
+    <button class="analyze-btn" id="analyzeBtn" onclick="analyze()">
+      <span id="btnIcon">✨</span>
+      <span id="btnText">Analyze My Resume</span>
+    </button>
+    <button class="clear-btn" onclick="clearAll()">Clear All</button>
+  </div>
+
+  <!-- ERROR / INFO -->
+  <div id="msgBox" style="display:none"></div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <div class="results-title">📊 Analysis Results</div>
+
+    <!-- SCORES -->
+    <div class="score-grid" id="scoreGrid"></div>
+
+    <!-- KEYWORDS -->
+    <div class="section-box" id="keywordSection">
+      <div class="section-header">🔑 Keyword Analysis</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Missing from resume</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>Partial match</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Already present</div>
+      </div>
+      <div class="keyword-grid" id="keywordGrid"></div>
+    </div>
+
+    <!-- REWRITES -->
+    <div class="section-box" id="rewriteSection">
+      <div class="section-header">✍️ Bullet Points to Rewrite</div>
+      <div id="rewriteList"></div>
+    </div>
+
+    <!-- TIPS -->
+    <div class="section-box" id="tipsSection">
+      <div class="section-header">💡 Additional Tips</div>
+      <ul class="tips-list" id="tipsList"></ul>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+// PDF.js worker
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ── API KEY ──────────────────────────────────────────────────────────────────
+let API_KEY = localStorage.getItem('gemini_api_key') || '';
+const apiKeyInput = document.getElementById('apiKeyInput');
+if (API_KEY) {
+  apiKeyInput.value = API_KEY;
+  document.getElementById('noKeyAlert').style.display = 'none';
+}
+
+function saveApiKey() {
+  const val = apiKeyInput.value.trim();
+  if (!val) { showMsg('Enter a valid API key first.', 'error'); return; }
+  API_KEY = val;
+  localStorage.setItem('gemini_api_key', API_KEY);
+  document.getElementById('noKeyAlert').style.display = 'none';
+  showMsg('API key saved successfully!', 'info');
+}
+
+// ── CHAR COUNTERS ────────────────────────────────────────────────────────────
+document.getElementById('jdText').addEventListener('input', function () {
+  document.getElementById('jdCount').textContent = this.value.length + ' chars';
+});
+document.getElementById('resumeText').addEventListener('input', function () {
+  document.getElementById('resumeCount').textContent = this.value.length + ' chars';
+});
+
+// ── FILE UPLOAD ──────────────────────────────────────────────────────────────
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('resumeFile');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+async function handleFile(file) {
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileBadge').classList.add('visible');
+
+  let text = '';
+  if (file.type === 'application/pdf') {
+    try {
+      const ab  = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page    = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(s => s.str).join(' ') + '\n';
+      }
+    } catch {
+      showMsg('Could not parse PDF — please paste your resume text directly below.', 'error');
+      return;
+    }
+  } else {
+    text = await file.text();
+  }
+
+  text = text.trim();
+  document.getElementById('resumeText').value = text;
+  document.getElementById('resumeCount').textContent = text.length + ' chars';
+  const prev = document.getElementById('resumePreview');
+  prev.textContent = text.slice(0, 700) + (text.length > 700 ? '…' : '');
+  prev.classList.add('visible');
+}
+
+function removeFile() {
+  fileInput.value = '';
+  document.getElementById('fileBadge').classList.remove('visible');
+  document.getElementById('resumeText').value = '';
+  document.getElementById('resumeCount').textContent = '0 chars';
+  const prev = document.getElementById('resumePreview');
+  prev.classList.remove('visible');
+  prev.textContent = '';
+}
+
+// ── CLEAR ────────────────────────────────────────────────────────────────────
+function clearAll() {
+  document.getElementById('jdText').value = '';
+  document.getElementById('jdCount').textContent = '0 chars';
+  removeFile();
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('msgBox').style.display = 'none';
+}
+
+// ── ANALYZE ──────────────────────────────────────────────────────────────────
+async function analyze() {
+  const jd     = document.getElementById('jdText').value.trim();
+  const resume = document.getElementById('resumeText').value.trim();
+
+  if (!API_KEY)  return showMsg('Please save your Gemini API key first (top-right).', 'error');
+  if (!jd)       return showMsg('Please paste a job description.', 'error');
+  if (!resume)   return showMsg('Please upload or paste your resume.', 'error');
+
+  setLoading(true);
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('msgBox').style.display = 'none';
+
+  try {
+    const raw    = await callGemini(buildPrompt(jd, resume));
+    const parsed = parseJSON(raw);
+    renderResults(parsed);
+  } catch (e) {
+    showMsg('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── PROMPT ───────────────────────────────────────────────────────────────────
+function buildPrompt(jd, resume) {
+  return `You are an expert ATS analyst and career coach. Analyze the job description and resume below, then reply ONLY with a valid JSON object — no markdown, no text outside the JSON.
+
+JOB DESCRIPTION:
+"""
+${jd}
+"""
+
+RESUME:
+"""
+${resume}
+"""
+
+Required JSON structure:
+{
+  "match_score": <0-100>,
+  "ats_score": <0-100>,
+  "missing_keywords": ["keyword", ...],
+  "present_keywords": ["keyword", ...],
+  "partial_keywords": ["keyword", ...],
+  "rewrites": [
+    {
+      "original": "exact line from resume that needs improvement",
+      "improved": "rewritten version incorporating job keywords and stronger action verbs",
+      "reason": "why this change improves the match"
+    }
+  ],
+  "tips": ["tip 1", "tip 2", "tip 3", "tip 4", "tip 5"]
+}
+
+Rules:
+- missing_keywords: up to 20 important JD terms NOT in resume
+- present_keywords: up to 15 important terms found in BOTH
+- partial_keywords: up to 10 terms mentioned differently or partially
+- rewrites: 3-6 actual resume lines, each rewritten to better match JD
+- tips: 5 specific, actionable improvements
+- match_score: overall resume-to-JD relevance (0-100)
+- ats_score: likelihood of passing ATS filtering (0-100)`;
+}
+
+// ── GEMINI API ────────────────────────────────────────────────────────────────
+async function callGemini(prompt) {
+  const url  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+  };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${res.status}`);
+  }
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+function parseJSON(text) {
+  const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  try { return JSON.parse(clean); } catch {
+    const m = clean.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+    throw new Error('Could not parse AI response. Please try again.');
+  }
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+function renderResults(d) {
+  renderScores(d);
+  renderKeywords(d);
+  renderRewrites(d.rewrites || []);
+  renderTips(d.tips || []);
+  const el = document.getElementById('results');
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth' });
+}
+
+function scoreColor(s) { return s >= 70 ? 'score-green' : s >= 45 ? 'score-yellow' : 'score-red'; }
+function barColor(s)   { return s >= 70 ? 'var(--green)' : s >= 45 ? 'var(--yellow)' : 'var(--red)'; }
+
+function renderScores(d) {
+  const match    = d.match_score || 0;
+  const ats      = d.ats_score   || 0;
+  const missing  = (d.missing_keywords || []).length;
+  const present  = (d.present_keywords || []).length;
+
+  document.getElementById('scoreGrid').innerHTML = `
+    <div class="score-card">
+      <div class="score-value ${scoreColor(match)}">${match}%</div>
+      <div class="score-label">Job Match Score</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" style="width:${match}%;background:${barColor(match)}"></div>
+      </div>
+    </div>
+    <div class="score-card">
+      <div class="score-value ${scoreColor(ats)}">${ats}%</div>
+      <div class="score-label">ATS Pass Rate</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" style="width:${ats}%;background:${barColor(ats)}"></div>
+      </div>
+    </div>
+    <div class="score-card">
+      <div class="score-value score-green">${present}</div>
+      <div class="score-label">Keywords Matched</div>
+    </div>
+    <div class="score-card">
+      <div class="score-value score-red">${missing}</div>
+      <div class="score-label">Keywords Missing</div>
+    </div>`;
+}
+
+function renderKeywords(d) {
+  const items = [
+    ...(d.missing_keywords || []).map(k => `<div class="keyword-chip chip-missing">✗ ${esc(k)}</div>`),
+    ...(d.partial_keywords || []).map(k => `<div class="keyword-chip chip-partial">~ ${esc(k)}</div>`),
+    ...(d.present_keywords || []).map(k => `<div class="keyword-chip chip-present">✓ ${esc(k)}</div>`),
+  ];
+  document.getElementById('keywordGrid').innerHTML =
+    items.length ? items.join('') : '<p style="padding:16px;color:var(--muted);font-size:14px">No keywords extracted.</p>';
+}
+
+function renderRewrites(rewrites) {
+  const list = document.getElementById('rewriteList');
+  if (!rewrites.length) {
+    list.innerHTML = '<p style="padding:16px;color:var(--muted);font-size:14px">No rewrites needed — great match!</p>';
+    return;
+  }
+  list.innerHTML = rewrites.map((r, i) => `
+    <div class="rewrite-item">
+      ${r.reason ? `<div class="rewrite-reason">💬 ${esc(r.reason)}</div>` : ''}
+      <span class="rewrite-label label-original">Original</span>
+      <div class="rewrite-text text-original">${esc(r.original || '')}</div>
+      <span class="rewrite-label label-improved">Improved Version</span>
+      <div class="rewrite-text text-improved" id="imp-${i}">${esc(r.improved || '')}</div>
+      <button class="copy-btn" onclick="copyText(${i}, this)">📋 Copy improved</button>
+    </div>`).join('');
+}
+
+function renderTips(tips) {
+  document.getElementById('tipsList').innerHTML = tips.map(t =>
+    `<li class="tip-item"><div class="tip-dot"></div><span>${esc(t)}</span></li>`
+  ).join('');
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function copyText(i, btn) {
+  const text = document.getElementById(`imp-${i}`).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Copy improved'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function setLoading(on) {
+  const btn  = document.getElementById('analyzeBtn');
+  const icon = document.getElementById('btnIcon');
+  const txt  = document.getElementById('btnText');
+  btn.disabled = on;
+  if (on) {
+    icon.outerHTML = '<div class="spinner" id="btnIcon"></div>';
+    txt.textContent = 'Analyzing…';
+  } else {
+    document.getElementById('btnIcon').outerHTML = '<span id="btnIcon">✨</span>';
+    txt.textContent = 'Analyze My Resume';
+  }
+}
+
+function showMsg(msg, type) {
+  const box = document.getElementById('msgBox');
+  box.innerHTML = `<div class="alert alert-${type}"><span>${type === 'error' ? '⚠️' : 'ℹ️'}</span><span>${esc(msg)}</span></div>`;
+  box.style.display = 'block';
+  if (type !== 'error') setTimeout(() => { box.style.display = 'none'; }, 3000);
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
